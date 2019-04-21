@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<mvvm:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms" 
+                      xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                      xmlns:local="clr-namespace:TD1"
+                      xmlns:models="clr-namespace:TD1.FourPlaces.Models"
+                      xmlns:mvvm="clr-namespace:Storm.Mvvm.Forms;assembly=Storm.Mvvm.Forms"
+                      xmlns:vm="clr-namespace:TD1.FourPlaces.ViewModels"
+                      Title="Lieux"
+                      x:Class="TD1.FourPlaces.Views.PlacesListPage"
+                      x:DataType="vm:PlacesListViewModel">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Compte" Command="{Binding OpenAccountCommand}"/>
+    </ContentPage.ToolbarItems>
+
+    <AbsoluteLayout>
+        <!--<ActivityIndicator 
+                IsRunning="{Binding IndicRunning}" 
+                IsVisible="{Binding IndicVisible}" 
+                AbsoluteLayout.LayoutFlags="PositionProportional" 
+                AbsoluteLayout.LayoutBounds="0,0,-1,-1" 
+                x:Name="listIndicator"  
+                VerticalOptions="Center" 
+                HorizontalOptions="Center"/>-->
+
+            <ListView AbsoluteLayout.LayoutFlags="SizeProportional"
+                      AbsoluteLayout.LayoutBounds="0,0,1,1"
+                      x:Name="Lieux" 
+                      HasUnevenRows="True" 
+                      SelectionMode="Single" 
+                      SelectedItem="{Binding SelectedPlace}" 
+                      ItemsSource="{Binding Places}" 
+                      IsPullToRefreshEnabled="True"
+                      RefreshCommand="{Binding RefreshCommand}"
+                      IsRefreshing="{Binding IndicRunning}">
+
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Place">
+                        <ViewCell>
+                            <Frame CornerRadius="4"
+                                   HasShadow="True"
+                                   Margin="4,4,4,4"
+                                   Padding="8,4,8,4"
+                                   HorizontalOptions="FillAndExpand"
+                                   VerticalOptions="Start"
+                                   >
+                                <StackLayout HorizontalOptions="FillAndExpand"
+                                             VerticalOptions="Start"
+                                             Orientation="Horizontal">
+
+                                    <Image Source="{Binding ImageSource}" 
+                                           WidthRequest="50"/>
+
+                                    <StackLayout Orientation="Vertical"
+                                                 Grid.Column="0"
+                                                 HorizontalOptions="FillAndExpand"
+                                                 VerticalOptions="Center"
+                                                 >
+                                        <Label Text="{Binding Title}" 
+                                               TextColor="Black" 
+                                               LineBreakMode="WordWrap" 
+                                               FontSize="15"
+                                               />
+                                        <Label Text="{Binding SmallDescription}" 
+                                               FontSize="10"
+                                               TextColor="Gray"
+                                               />
+                                    </StackLayout>
+
+                                    <!--ImageButton BackgroundColor="DarkRed"
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center"
+                                            Source="delete.png"
+                                            HeightRequest="24"
+                                            WidthRequest="24"
+                                            Command="{Binding DeleteCommand}"/-->
+                                </StackLayout>
+                            </Frame>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ImageButton AbsoluteLayout.LayoutFlags="PositionProportional"
+                         AbsoluteLayout.LayoutBounds="1.0,1.0,80,80"
+                         Margin="10" 
+                         CornerRadius="40"
+                         BackgroundColor="{StaticResource PrimaryBackgroundColor}"
+                         Source="plus.png"
+                         IsVisible="{Binding Connected}"
+                         Command="{Binding AddPlaceCommand}" />
+    </AbsoluteLayout>
+
+</mvvm:BaseContentPage>

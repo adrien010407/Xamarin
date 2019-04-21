@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<mvvm:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms" 
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mvvm="clr-namespace:Storm.Mvvm.Forms;assembly=Storm.Mvvm.Forms"
+             x:Class="TD1.Views.MainPage">
+
+    <StackLayout>
+        <Label Text="Hello Xamarin.Forms!" />
+        <Button Text="Season" Command="{Binding SeasonCommand}"/>
+        <Button Text="Moon" Command="{Binding MoonCommand}"/>
+        <Button Text="Todo List" Command="{Binding TodoListCommand}"/>
+        <Button Text="Four Places" Command="{Binding PlacesListCommand}"/>
+    </StackLayout>
+
+</mvvm:BaseContentPage>

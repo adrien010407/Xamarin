@@ -1,0 +1,121 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<mvvm:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms" 
+                      xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                      xmlns:maps="clr-namespace:Xamarin.Forms.Maps;assembly=Xamarin.Forms.Maps"
+                      xmlns:local="clr-namespace:TD1"
+                      xmlns:control="clr-namespace:TD1.FourPlaces.Controls"
+                      xmlns:models="clr-namespace:TD1.FourPlaces.Models"
+                      xmlns:mvvm="clr-namespace:Storm.Mvvm.Forms;assembly=Storm.Mvvm.Forms"
+                      xmlns:vm="clr-namespace:TD1.FourPlaces.ViewModels"
+                      Title="{Binding Place.Title}"
+                      x:Class="TD1.FourPlaces.Views.PlacePage"
+                      x:DataType="vm:PlaceViewModel">
+
+    <AbsoluteLayout>
+        <ScrollView AbsoluteLayout.LayoutFlags="SizeProportional"
+                    AbsoluteLayout.LayoutBounds="0,0,1,1"
+                    InputTransparent="True">
+
+            <StackLayout Orientation="Vertical">
+
+                <StackLayout Orientation="Vertical"
+                         x:Name="DescMapSL"
+                         Margin="5">
+
+                    <StackLayout Orientation="Vertical"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center">
+
+                        <Image Source="{Binding Place.ImageSource}"
+                               WidthRequest="200"
+                               />
+
+                        <Label Text="{Binding Place.Description}"
+                           TextColor="Black"
+                           FontSize="15"/>
+
+                    </StackLayout>
+
+                    <control:BindableMap x:Name="PlaceMap"  
+                                         WidthRequest="250"
+                                         HeightRequest="250"
+                                         Margin="20, 5"
+                                         MapType="Street"
+                                         MapPosition="{Binding MapPosition}"
+                                         MapPins="{Binding MapPins}"/>
+
+                </StackLayout>
+
+                <StackLayout VerticalOptions="FillAndExpand" 
+                             Orientation="Vertical">
+
+                    <StackLayout Orientation="Horizontal"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="FillAndExpand">
+
+                        <Label Text="Commentaires :"
+                           FontSize="15"
+                           TextColor="Black"/>
+
+                    </StackLayout>
+
+                    <control:StackListView x:Name="Commentaires" 
+                              ItemsSource="{Binding Place.Comments}"
+                              VerticalOptions="FillAndExpand"
+                                           Margin="0,0,0,10">
+
+                        <control:StackListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Comment">
+                                <Frame CornerRadius="4"
+                                       HasShadow="True"
+                                       Margin="4,4,4,4"
+                                       Padding="8,4,8,4"
+                                       HorizontalOptions="FillAndExpand"
+                                       VerticalOptions="Start">
+
+                                    <StackLayout HorizontalOptions="FillAndExpand"
+                                                 VerticalOptions="Center"
+                                                 Orientation="Vertical">
+
+                                        <Label Text="{Binding Text}"
+                                                   TextColor="Black"
+                                                   FontSize="12"/>
+
+                                        <StackLayout Orientation="Horizontal"
+                                                     HorizontalOptions="FillAndExpand"
+                                                     VerticalOptions="Start"
+                                                     >
+                                            <Label Text="{Binding Date, StringFormat='{0:dd MMMM yyyy HH:mm:ss}'}" 
+                                                   TextColor="Black" 
+                                                   LineBreakMode="WordWrap" 
+                                                   FontSize="10"
+                                                   />
+                                            <Label Text="{Binding Author.Name}" 
+                                                   FontSize="10"
+                                                   TextColor="Gray"
+                                                   />
+                                        </StackLayout>
+                                    </StackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </control:StackListView.ItemTemplate>
+                    </control:StackListView>
+
+                </StackLayout>
+
+            </StackLayout>
+
+        </ScrollView>
+
+        <ImageButton AbsoluteLayout.LayoutFlags="PositionProportional"
+                     AbsoluteLayout.LayoutBounds="1.0,1.0,80,80"
+                     Margin="10" 
+                     Padding="10"
+                     CornerRadius="40"
+                     BackgroundColor="{StaticResource PrimaryBackgroundColor}"
+                     Source="comment.png"
+                     IsVisible="{Binding Connected}"
+                     Command="{Binding CommentCommand}"/>
+    </AbsoluteLayout>
+
+</mvvm:BaseContentPage>

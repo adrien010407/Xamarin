@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<mvvm:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                      xmlns:local="clr-namespace:TD1"
+                      xmlns:models="clr-namespace:TD1.Models"
+                      xmlns:mvvm="clr-namespace:Storm.Mvvm.Forms;assembly=Storm.Mvvm.Forms"
+                      xmlns:vm="clr-namespace:TD1.ViewModels"
+                      x:Class="TD1.Views.TodoListPage"
+                      BackgroundColor="{StaticResource PageBackgroundColor}"
+                      x:DataType="vm:TodoListViewModel"
+                      x:Name="TodoListPageName">
+
+    <StackLayout Orientation="Vertical">
+
+        <StackLayout HorizontalOptions="FillAndExpand"
+               VerticalOptions="Start"
+               BackgroundColor="{StaticResource TitleBackgroundColor}"               
+                 >
+            <Label Text="{Binding Title}" 
+                   TextColor="White"
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   Margin="4,6,4,6"
+                   />
+            <Button BackgroundColor="LightGreen"
+                    Grid.Column="1"
+                    Margin="8,0,0,0"
+                    HorizontalOptions="End"
+                    VerticalOptions="Center"
+                    Image="delete.png"
+                    HeightRequest="24"
+                    WidthRequest="24"
+                    Command="{Binding AddCommand}" />
+        </StackLayout>
+
+        <ListView x:Name="TodoList" HasUnevenRows="True" SelectionMode="None" ItemsSource="{Binding Todos}">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:Todo">
+                    <ViewCell>
+                        <Frame CornerRadius="4"
+                               HasShadow="True"
+                               Margin="4,4,4,4"
+                               Padding="8,4,8,4"
+                               HorizontalOptions="FillAndExpand"
+                               VerticalOptions="Start"
+                               >
+                            <StackLayout HorizontalOptions="FillAndExpand"
+                                         VerticalOptions="Start"
+                                         Orientation="Horizontal">
+
+                                <StackLayout Orientation="Vertical"
+                                             Grid.Column="0"
+                                             HorizontalOptions="FillAndExpand"
+                                             VerticalOptions="Center"
+                                             >
+                                    <Label Text="{Binding Text}" 
+                                           TextColor="Black" 
+                                           LineBreakMode="WordWrap" 
+                                           FontSize="10"
+                                           />
+                                    <Label Text="{Binding CreationDate, StringFormat={StaticResource CreationDateFormat}}" 
+                                           FontSize="8"
+                                           TextColor="Gray"
+                                           />
+                                </StackLayout>
+                                
+                                <Button BackgroundColor="LightGreen"
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center"
+                                        Image="delete.png"
+                                        HeightRequest="24"
+                                        WidthRequest="24"
+                                        Command="{Binding Path=BindingContext.EditCommand, Source={x:Reference Name=TodoListPageName}}"
+                                        CommandParameter="{Binding .}"/>
+
+                                <Button BackgroundColor="DarkRed"
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center"
+                                        Image="delete.png"
+                                        HeightRequest="24"
+                                        WidthRequest="24"
+                                        Command="{Binding DeleteCommand}"
+                                        />
+                            </StackLayout>
+                        </Frame>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+    </StackLayout>
+</mvvm:BaseContentPage>

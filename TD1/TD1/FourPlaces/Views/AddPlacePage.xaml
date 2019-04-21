@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<mvvm:BaseContentPage xmlns="http://xamarin.com/schemas/2014/forms" 
+                      xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                      xmlns:local="clr-namespace:TD1"
+                      xmlns:control="clr-namespace:TD1.FourPlaces.Controls"
+                      xmlns:models="clr-namespace:TD1.FourPlaces.Models"
+                      xmlns:mvvm="clr-namespace:Storm.Mvvm.Forms;assembly=Storm.Mvvm.Forms"
+                      xmlns:vm="clr-namespace:TD1.FourPlaces.ViewModels"
+                      x:Class="TD1.FourPlaces.Views.AddPlacePage"
+                      x:DataType="vm:AddPlaceViewModel">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Sauvegarder" 
+                     Command="{Binding SaveCommand}"
+                     Icon="save.png"/>
+        <ToolbarItem Text="Annuler" 
+                     Command="{Binding CancelCommand}"
+                     Icon="cancel.png"/>
+    </ContentPage.ToolbarItems>
+    
+    <ScrollView InputTransparent="True">
+        <StackLayout>
+            <Entry Placeholder="Titre"
+                   Text="{Binding Place.Title}"/>
+
+            <StackLayout Orientation="Vertical">
+                <Image Source="{Binding Place.ImageSource}"
+                       HeightRequest="200"
+                       IsVisible="{Binding ImageChoosed}"/>
+                <Button Text="Choisir image"
+                        Command="{Binding ChooseImageCommand}"/>
+            </StackLayout>
+
+            <Editor Placeholder="Description"
+                    Text="{Binding Place.Description}"/>
+
+            <control:BindableMap x:Name="PlaceMap"  
+                                 WidthRequest="250"
+                                 HeightRequest="250"
+                                 Margin="20, 5"
+                                 MapType="Street"
+                                 MapPosition="{Binding MapPosition}"
+                                 MapSpan="{Binding MapSpan}"/>
+        </StackLayout>
+    </ScrollView>
+</mvvm:BaseContentPage>

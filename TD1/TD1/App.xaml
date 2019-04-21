@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<mvvm:MvvmApplication xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mvvm="clr-namespace:Storm.Mvvm;assembly=Storm.Mvvm.Forms"
+             x:Class="TD1.App">
+    <mvvm:MvvmApplication.Resources>
+        <ResourceDictionary>
+            <Color x:Key="TitleBackgroundColor">#F2500A</Color>
+            <Color x:Key="PageBackgroundColor">#EEEEEE</Color>
+            <Color x:Key="PrimaryBackgroundColor">#2196F3</Color>
+            
+            <x:String x:Key="CreationDateFormat">{0:dd/MM/yyyy HH:mm}</x:String>
+        </ResourceDictionary>
+    </mvvm:MvvmApplication.Resources>
+</mvvm:MvvmApplication>
