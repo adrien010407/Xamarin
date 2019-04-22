@@ -20,14 +20,12 @@ namespace TD1.FourPlaces.Controls
 
         public BindableMap() : base(MapSpan.FromCenterAndRadius(new Position(0, 0), Distance.FromMiles(1)))
         {
-            Debug.WriteLine($"Taadada {VisibleRegion==null}");
             this.PropertyChanged += (object sender, PropertyChangedEventArgs e) =>
             {
                     BindableMap map = sender as BindableMap;
                     if (map.VisibleRegion != null)
                     {
                         this.MapSpan = (map.VisibleRegion);
-                        Debug.WriteLine($"Taadada {MapSpan.Center.Latitude} {MapSpan.Center.Longitude}");
                     }
             };
         }
