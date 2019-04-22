@@ -17,6 +17,7 @@ using MonkeyCache.FileStore;
 using Plugin.Media;
 using Plugin.Media.Abstractions;
 using System.IO;
+using Acr.UserDialogs;
 
 namespace TD1.FourPlaces.ViewModels
 {
@@ -24,6 +25,7 @@ namespace TD1.FourPlaces.ViewModels
     {
         HttpClient client;
 
+        private IUserDialogs Dialogs { get; }
 
         public Tokens tokens = new Tokens();
         private Author _author = new Author();
@@ -55,6 +57,7 @@ namespace TD1.FourPlaces.ViewModels
         private RestService()
         {
             client = new HttpClient();
+            Dialogs = UserDialogs.Instance;
 
             string cache_tokens = Barrel.Current.Get<string>("tokens");
             if (cache_tokens != null)
@@ -72,24 +75,21 @@ namespace TD1.FourPlaces.ViewModels
 
         private async Task<HttpRequestMessage> GetRequestAsync(HttpMethod method, Uri uri, HttpContent content = null, bool no_refresh = true)
         {
-            Debug.WriteLine("line 58");
             if (!no_refresh && tokens.ExpiresIn - tokens.DTime < 120)
             {
                 await Refresh();
             }
-            Debug.WriteLine("line 63");
             HttpRequestMessage request = new HttpRequestMessage(method, uri) {
                 Content = content
             };
-            Debug.WriteLine("line 67");
             try
-            {   Debug.WriteLine("line 69"); Debug.WriteLine("tokens : {0}", new string[] { tokens.ToString() });
+            {
                 if (tokens != null && tokens.AccessToken != null && tokens.TokenType != null)
-                    request.Headers.Authorization = new AuthenticationHeaderValue(tokens.TokenType, tokens.AccessToken); Debug.WriteLine("line 70");
+                    request.Headers.Authorization = new AuthenticationHeaderValue(tokens.TokenType, tokens.AccessToken);
             }
             catch (Exception e)
             {
-                Debug.WriteLine(@"error : {0}, \ntoken : {1}", new string[] { e.Message, tokens.AccessToken });
+                Debug.WriteLine($"error : {e.Message}, \ntoken : {tokens.AccessToken}");
             }
             return request;
         }
@@ -97,43 +97,45 @@ namespace TD1.FourPlaces.ViewModels
         public async Task<ObservableCollection<Place>> LoadPlaces(int days = 7, bool forceRefresh = false)
         {
             Places = new ObservableCollection<Place>();
-            Debug.WriteLine("line 82");
+
             string RestUrl = "https://td-api.julienmialon.com/places";
             var uri = new Uri(string.Format(RestUrl, string.Empty));
-            var request = await GetRequestAsync(HttpMethod.Get, uri);
-            Debug.WriteLine("line 86");
-            var content = string.Empty;
 
-            Debug.WriteLine("\n entree \n");
+            var request = await GetRequestAsync(HttpMethod.Get, uri);
+
+            var content = string.Empty;
 
             //check if we are connected, else check to see if we have valid data
             if (!(Connectivity.NetworkAccess == NetworkAccess.Internet))
             {
-                Debug.WriteLine("\n no internet \n");
+                Debug.WriteLine("\n No internet \n");
                 content = Barrel.Current.Get<string>(RestUrl);
             }
             else if (!forceRefresh && !Barrel.Current.IsExpired(RestUrl))
             {
-                Debug.WriteLine("\n if internet \n");
+                Debug.WriteLine("\n If internet \n");
                 content = Barrel.Current.Get<string>(RestUrl);
             }
-
-            Debug.WriteLine("\n sortie \n");
 
             try
             {
                 if (string.IsNullOrWhiteSpace(content))
                 {
                     var response = await client.SendAsync(request);
+                    var tmpcontent = await response.Content.ReadAsStringAsync();
                     if (response.IsSuccessStatusCode) //200
                     {
-                        content = await response.Content.ReadAsStringAsync();
-                        Barrel.Current.Add(RestUrl, content, TimeSpan.FromDays(days));
+                        Barrel.Current.Add(RestUrl, tmpcontent, TimeSpan.FromDays(days));
+                        content = tmpcontent;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"ERROR in LoadPlaces {response.StatusCode} : {tmpcontent}");
                     }
                 }
 
                 Response<ObservableCollection<Place>> value = JsonConvert.DeserializeObject<Response<ObservableCollection<Place>>>(content);
-                if (value.Data != null)
+                if (value.IsSuccess && value.Data != null)
                 {
                     Xamarin.Essentials.Location location = null;
                     try
@@ -160,7 +162,7 @@ namespace TD1.FourPlaces.ViewModels
 
                     if (location == null)
                     {
-                        Debug.WriteLine("location null");
+                        Debug.WriteLine("Location is null");
                         Places = value.Data;
                     }
                     else
@@ -179,9 +181,8 @@ namespace TD1.FourPlaces.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in LoadPlaces : {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in LoadPlaces : {ex.Message}");
             }
-
 
             return Places;
         }
@@ -192,24 +193,36 @@ namespace TD1.FourPlaces.ViewModels
 
             string RestUrl = "https://td-api.julienmialon.com/places/" + placeId.ToString();
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             var request = await GetRequestAsync(HttpMethod.Get, uri);
 
             try
             {
                 var response = await client.SendAsync(request);
-                if (response.IsSuccessStatusCode) //200
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode || 
+                    response.StatusCode == HttpStatusCode.BadRequest || 
+                    response.StatusCode == HttpStatusCode.NotFound) //200, 400, 404
                 {
-                    var content = await response.Content.ReadAsStringAsync();
                     Response<Place> value = JsonConvert.DeserializeObject<Response<Place>>(content);
-                    if (value.Data != null)
+                    if (value.IsSuccess && value.Data != null)
                     {
                         Place = value.Data;
                     }
+                    else
+                    {
+                        Debug.WriteLine($"OK ERROR in LoadPlace {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync($"Erreur pendant le chargment du lieu\n{value.ErrorMessage}", $"Erreur {response.StatusCode}, {value.ErrorCode}");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"ERROR in LoadPlace {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in LoadPlace {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in LoadPlace {ex.Message}");
             }
 
             return Place;
@@ -220,8 +233,8 @@ namespace TD1.FourPlaces.ViewModels
             byte[] imageBytes = new byte[0];
 
             string RestUrl = "https://td-api.julienmialon.com/images/" + ImageId.ToString();
-            
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             var request = await GetRequestAsync(HttpMethod.Get, uri);
 
             try
@@ -231,16 +244,23 @@ namespace TD1.FourPlaces.ViewModels
                 {
                     imageBytes = await response.Content.ReadAsByteArrayAsync();
                 }
-                else if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.NotFound)
+                else
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    Response<Object> value = JsonConvert.DeserializeObject<Response<Object>>(content);
-                    Debug.WriteLine(@"				ERROR in LoadImage {0}, {1}", new string[] { value.ErrorCode, value.ErrorMessage });
+                    if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        Response<Object> value = JsonConvert.DeserializeObject<Response<Object>>(content);
+                        Debug.WriteLine($"OK ERROR in LoadImage {response.StatusCode} {value.ErrorCode}, {value.ErrorMessage}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"ERROR in LoadImage {response.StatusCode}, {content}");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in LoadImage {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in LoadImage {ex.Message}");
             }
 
             return imageBytes;
@@ -250,11 +270,11 @@ namespace TD1.FourPlaces.ViewModels
         public async Task<bool> AddPlace(Place place, MediaFile file)
         {
             bool placeAdded = false;
-            Debug.WriteLine($"file : {file}");
             ImageId imageId = (file != null) ? await PostImage(file) : new ImageId(1);
             if (imageId.Id == -1)
             {
-                Debug.WriteLine(@"ERROR in AddPlace {0}", new string[] { "Image pas acceptée" });
+                Debug.WriteLine($"ERROR in AddPlace : Image pas acceptée");
+                await Dialogs.AlertAsync("Erreur durant l'update de l'image", "Erreur sur l'image");
                 return false;
             }
             else
@@ -263,26 +283,36 @@ namespace TD1.FourPlaces.ViewModels
             }
 
             string RestUrl = "https://td-api.julienmialon.com/places";
-
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             StringContent placeJson = new StringContent(JsonConvert.SerializeObject(place), Encoding.UTF8, "application/json");
-            Debug.WriteLine($"place : {JsonConvert.SerializeObject(place)}");
+
             var request = await GetRequestAsync(HttpMethod.Post, uri, placeJson);
 
             try
             {
                 var response = await client.SendAsync(request);
                 var content = await response.Content.ReadAsStringAsync();
-                if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.BadRequest) //200
+                if (response.IsSuccessStatusCode || 
+                    response.StatusCode == HttpStatusCode.BadRequest || 
+                    response.StatusCode == HttpStatusCode.Unauthorized) //200, 400, 401
                 {
                     Response<Object> value = JsonConvert.DeserializeObject<Response<Object>>(content);
                     if (value.IsSuccess)
                     {
                         placeAdded = true;
                     }
+                    else if (response.StatusCode == HttpStatusCode.Unauthorized && value.ErrorCode == "GENERIC_HTTP_ERROR")
+                    {
+                        Debug.WriteLine($"OK ERROR in AddPlace {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync($"Erreur durant l'ajout du lieu\nVous n'êtes pas connecté ou la connexion a été coupée.",
+                            $"Erreur de connexion");
+                    }
                     else
                     {
-                        Debug.WriteLine($"OK ERROR in AddPlace {value.ErrorCode} : {value.ErrorMessage}");
+                        Debug.WriteLine($"OK ERROR in AddPlace {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync($"Erreur durant l'ajout du lieu\n{value.ErrorMessage}", 
+                            $"Erreur {response.StatusCode}, {value.ErrorCode}");
                     }
                 }
                 else
@@ -303,35 +333,47 @@ namespace TD1.FourPlaces.ViewModels
             bool commentAdded = false;
 
             string RestUrl = "https://td-api.julienmialon.com/places/" + placeId + "/comments";
-
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             StringContent commentJson = new StringContent(JsonConvert.SerializeObject(new Comment(comment)), Encoding.UTF8, "application/json");
+
             var request = await GetRequestAsync(HttpMethod.Post, uri, commentJson);
 
             try
             {
                 var response = await client.SendAsync(request);
                 var content = await response.Content.ReadAsStringAsync();
-                Response<Object> value = JsonConvert.DeserializeObject<Response<Object>>(content);
-                if (response.IsSuccessStatusCode) //200
+                if (response.IsSuccessStatusCode || 
+                    response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.NotFound) //200, 401, 400, 404
                 {
+                    Response<Object> value = JsonConvert.DeserializeObject<Response<Object>>(content);
                     if (value.IsSuccess)
                     {
                         commentAdded = true;
                     }
+                    else if (response.StatusCode == HttpStatusCode.Unauthorized && value.ErrorCode == "GENERIC_HTTP_ERROR")
+                    {
+                        Debug.WriteLine($"OK ERROR in AddComment {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync($"Erreur durant l'ajout d'un commentaire\nVous n'êtes pas connecté ou la connexion a été coupée.",
+                            $"Erreur de connexion");
+                    }
                     else
                     {
-                        Debug.WriteLine(@"ERROR in AddComment {0}", new string[] { value.ErrorMessage });
+                        Debug.WriteLine($"OK ERROR in AddComment {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync($"Erreur durant l'ajout d'un commentaire\n{value.ErrorMessage}",
+                            $"Erreur {response.StatusCode}, {value.ErrorCode}");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine(@"ERROR in AddComment {0}", new string[] { value.ErrorMessage });
+                    Debug.WriteLine($"ERROR in AddComment {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"ERROR in AddComment {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in AddComment {ex.Message}");
             }
 
             return commentAdded;
@@ -340,7 +382,6 @@ namespace TD1.FourPlaces.ViewModels
         public async Task<ImageId> PostImage(MediaFile file)
         {
             ImageId imageId = new ImageId();
-            
             
             var imgContent = new MultipartFormDataContent();
 
@@ -367,34 +408,37 @@ namespace TD1.FourPlaces.ViewModels
             }
 
             string RestUrl = "https://td-api.julienmialon.com/images";
-
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             var request = await GetRequestAsync(HttpMethod.Post, uri, imgContent);
 
             try
             {
-                Debug.WriteLine("Line 359"); var response = await client.SendAsync(request);
-                Debug.WriteLine("Line 360"); var content = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine(@"Line 361 {0}", new string[] { content }); Response<ImageId> value = JsonConvert.DeserializeObject<Response<ImageId>>(content);
-                Debug.WriteLine("Line 362"); if (response.IsSuccessStatusCode) //200
+                var response = await client.SendAsync(request);
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode ||
+                    response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.NotFound) //200, 401, 400, 404
                 {
+                    Response<ImageId> value = JsonConvert.DeserializeObject<Response<ImageId>>(content);
                     if (value.IsSuccess && value.Data != null)
                     {
                         imageId = value.Data;
                     }
                     else
                     {
-                        Debug.WriteLine(@"				ERROR1 in PostImage {0}", new string[] { value.ErrorMessage });
+                        Debug.WriteLine($"OK ERROR in PostImage {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine(@"				ERROR2 in PostImage {0}", new string[] { value.ErrorMessage });
+                    Debug.WriteLine($"ERROR in PostImage {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR3 in PostImage {ex.Message}");
+                Debug.WriteLine($"EXCEPTION in PostImage {ex.Message}");
             }
 
             return imageId;
@@ -406,7 +450,9 @@ namespace TD1.FourPlaces.ViewModels
 
             string RestUrl = "https://td-api.julienmialon.com/auth/register";
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             StringContent personJson = new StringContent(JsonConvert.SerializeObject(person), Encoding.UTF8, "application/json");
+
             var request = await GetRequestAsync(HttpMethod.Get, uri, personJson);
 
             tokens = new Tokens();
@@ -414,9 +460,9 @@ namespace TD1.FourPlaces.ViewModels
             try
             {
                 var response = await client.SendAsync(request);
+                var content = await response.Content.ReadAsStringAsync();
                 if (response.IsSuccessStatusCode) //200
                 {
-                    var content = await response.Content.ReadAsStringAsync();
                     Response<Tokens> value = JsonConvert.DeserializeObject<Response<Tokens>>(content);
                     if (value.IsSuccess && value.Data != null)
                     {
@@ -425,11 +471,15 @@ namespace TD1.FourPlaces.ViewModels
                         Author = person;
                         worked = true;
                     }
+                } 
+                else
+                {
+                    Debug.WriteLine($"ERROR in register {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in register {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in register {ex.Message}");
             }
 
             return worked;
@@ -438,12 +488,12 @@ namespace TD1.FourPlaces.ViewModels
         public async Task<bool> Login(AuthorLogin person)
         {
             bool worked = false;
-
-            Debug.WriteLine("login");
+            
             string RestUrl = "https://td-api.julienmialon.com/auth/login";
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             StringContent personJson = new StringContent(JsonConvert.SerializeObject(person), Encoding.UTF8, "application/json");
-            Debug.WriteLine(personJson.ReadAsStringAsync().Result);
+            
             var request = await GetRequestAsync(HttpMethod.Get, uri, personJson);
 
             tokens = new Tokens();
@@ -451,25 +501,33 @@ namespace TD1.FourPlaces.ViewModels
             try
             {
                 var response = await client.SendAsync(request);
-                Debug.WriteLine(response.StatusCode);
-                if (response.IsSuccessStatusCode) //200
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode ||
+                    response.StatusCode == HttpStatusCode.NotFound) //200, 404
                 {
-                    Debug.WriteLine("sucess");
-                    var content = await response.Content.ReadAsStringAsync();
                     Response<Tokens> value = JsonConvert.DeserializeObject<Response<Tokens>>(content);
                     if (value.IsSuccess && value.Data != null)
                     {
                         tokens = value.Data;
                         Barrel.Current.Add("tokens", JsonConvert.SerializeObject(tokens), TimeSpan.FromSeconds(tokens.ExpiresIn));
-                        Debug.WriteLine(@"token : {0}", new string[] { tokens.AccessToken });
                         worked = true;
+
                         await GetMyInfo();
                     }
+                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        Debug.WriteLine($"OK ERROR in login {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}");
+                        await Dialogs.AlertAsync("Le nom d'utilisateur ou le mot de passe entré est incorrecte", "Ce compte n'existe pas");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"ERROR in login {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in login {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in login {ex.Message}");
             }
 
             return worked;
@@ -481,7 +539,9 @@ namespace TD1.FourPlaces.ViewModels
             
             string RestUrl = "https://td-api.julienmialon.com/auth/refresh";
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             StringContent refTokenJson = new StringContent(JsonConvert.SerializeObject(new RefreshToken(tokens.RefreshToken)), Encoding.UTF8, "application/json");
+
             var request = await GetRequestAsync(HttpMethod.Get, uri, refTokenJson, true);
 
             tokens = new Tokens();
@@ -489,21 +549,30 @@ namespace TD1.FourPlaces.ViewModels
             try
             {
                 var response = await client.SendAsync(request);
-                if (response.IsSuccessStatusCode) //200
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode ||
+                    response.StatusCode == HttpStatusCode.Unauthorized) //200, 401
                 {
-                    var content = await response.Content.ReadAsStringAsync();
                     Response<Tokens> value = JsonConvert.DeserializeObject<Response<Tokens>>(content);
                     if (value.IsSuccess && value.Data != null)
                     {
                         tokens = value.Data;
                         worked = true;
                         await GetMyInfo();
+                    } 
+                    else if (response.StatusCode == HttpStatusCode.Unauthorized && value.ErrorCode == "GENERIC_HTTP_ERROR")
+                    {
+                        Debug.WriteLine($"OK ERROR in Refresh {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}\nConnection lost");
                     }
+                }
+                else
+                {
+                    Debug.WriteLine($"ERROR in Refresh {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in Refresh {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in Refresh {ex.Message}");
             }
 
             return worked;
@@ -511,31 +580,38 @@ namespace TD1.FourPlaces.ViewModels
 
         public async Task<Author> GetMyInfo()
         {
-            Debug.WriteLine("me");
             Author = new Author();
 
             string RestUrl = "https://td-api.julienmialon.com/me";
             var uri = new Uri(string.Format(RestUrl, string.Empty));
+
             var request = await GetRequestAsync(HttpMethod.Get, uri);
 
             try
             {
                 var response = await client.SendAsync(request);
-                Debug.WriteLine(response.StatusCode);
-                if (response.IsSuccessStatusCode) //200
+                var content = await response.Content.ReadAsStringAsync();
+                if (response.IsSuccessStatusCode ||
+                    response.StatusCode == HttpStatusCode.Unauthorized) //200, 401
                 {
-                    Debug.WriteLine("success");
-                    var content = await response.Content.ReadAsStringAsync();
                     Response<Author> value = JsonConvert.DeserializeObject<Response<Author>>(content);
                     if (value.Data != null)
                     {
                         Author = value.Data;
                     }
+                    else if (response.StatusCode == HttpStatusCode.Unauthorized && value.ErrorCode == "GENERIC_HTTP_ERROR")
+                    {
+                        Debug.WriteLine($"OK ERROR in getMyInfo {response.StatusCode} {value.ErrorCode} : {value.ErrorMessage}\nConnection lost");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"ERROR in getMyInfo {response.StatusCode} : {content}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(@"				ERROR in getMyInfo {0}", new string[] { ex.Message });
+                Debug.WriteLine($"EXCEPTION in getMyInfo {ex.Message}");
             }
 
             return Author;
