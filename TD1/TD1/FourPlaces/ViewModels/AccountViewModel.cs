@@ -78,17 +78,18 @@ namespace TD1.FourPlaces.ViewModels
         public override async Task OnResume()
         {
             await base.OnResume();
-            if (RestService.Rest.Author.Id != -1)
+            if (RestService.Rest.Connected)
             {
-                Connected = true;
-                Author = RestService.Rest.Author;
-                Debug.WriteLine("Connected");
-                Debug.WriteLine(@"Author {0} {1}", new string[] { RestService.Rest.Author.FirstName, RestService.Rest.Author.LastName });
+                if (RestService.Rest.Author.Id == -1)
+                {
+                    Author = await RestService.Rest.GetMyInfo();
+                }
+                else
+                {
+                    Author = RestService.Rest.Author;
+                }
             }
-            else
-            {
-                Connected = false;
-            }
+            Connected = RestService.Rest.Connected;
         }
     }
 }

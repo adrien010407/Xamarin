@@ -17,7 +17,7 @@ namespace TD1.FourPlaces.ViewModels
         [JsonProperty(PropertyName = "token_type")]
         public string TokenType { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty(PropertyName = "create_date_seconds")]
         public long CreateDateSeconds { get; set; }
 
         public Tokens() {
