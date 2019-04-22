@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Windows.Input;
+using Acr.UserDialogs;
 using Storm.Mvvm;
 using TD1.FourPlaces.Models;
 using Xamarin.Forms;
@@ -11,6 +12,8 @@ namespace TD1.FourPlaces.ViewModels
     class LoginViewModel : ViewModelBase
     {
         public ICommand LoginCommand { get; set; }
+
+        private IUserDialogs Dialogs { get; }
 
         private string _email;
         public string Email
@@ -29,12 +32,20 @@ namespace TD1.FourPlaces.ViewModels
         public LoginViewModel()
         {
             LoginCommand = new Command(Login);
+            Dialogs = UserDialogs.Instance;
         }
 
         private async void Login(object _)
         {
-            await RestService.Rest.Login(new AuthorLogin(Email, Password));
-            await NavigationService.PopAsync();
+            bool login = await RestService.Rest.Login(new AuthorLogin(Email, Password));
+            if (!login)
+            {
+                await Dialogs.AlertAsync("Le nom d'utilisateur ou le mot de passe entré est incorrecte", "Ce compte n'existe pas");
+            }
+            else
+            {
+                await NavigationService.PopAsync();
+            }
         }
     }
 }

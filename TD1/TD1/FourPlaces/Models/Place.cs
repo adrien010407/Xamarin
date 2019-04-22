@@ -52,7 +52,6 @@ namespace TD1.FourPlaces.Models
 
         private void updateImage()
         {
-            Debug.WriteLine(@"update Image in {0}", new string[] { Title });
             ImageSource = ImageSource.FromUri(new Uri("https://td-api.julienmialon.com/images/" + ImageId.ToString()));
         }
 
