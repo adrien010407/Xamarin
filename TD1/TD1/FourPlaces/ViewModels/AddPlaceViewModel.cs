@@ -18,9 +18,12 @@ namespace TD1.FourPlaces.ViewModels
 {
     class AddPlaceViewModel : ViewModelBase
     {
+        private bool init;
+
         private MediaFile file;
 
         public ICommand ChooseImageCommand { get; set; }
+
         public ICommand SaveCommand { get; set; }
         public ICommand CancelCommand { get; set; }
 
@@ -56,6 +59,7 @@ namespace TD1.FourPlaces.ViewModels
 
         public AddPlaceViewModel()
         {
+            init = false;
             ChooseImageCommand = new Command(ChooseImage);
             SaveCommand = new Command(Save);
             CancelCommand = new Command(Cancel);
@@ -69,7 +73,6 @@ namespace TD1.FourPlaces.ViewModels
 
         private async void Save(object _)
         {
-            Debug.WriteLine("63");
             Place.Latitude = MapSpan.Center.Latitude;
             Place.Longitude = MapSpan.Center.Longitude;
             bool placeAdded = await RestService.Rest.AddPlace(Place, file);
@@ -102,36 +105,40 @@ namespace TD1.FourPlaces.ViewModels
             });
         }
 
-        public override async Task OnResume()
+        public override async void Initialize(Dictionary<string, object> navigationParameters)
         {
-            await base.OnResume();
+            base.Initialize(navigationParameters);
 
-            Xamarin.Essentials.Location location = null;
-            try
+            if (!init)
             {
-                var geo_request = new GeolocationRequest(GeolocationAccuracy.Best);
-                location = await Geolocation.GetLastKnownLocationAsync();
-                location = await Geolocation.GetLocationAsync(geo_request);
-            }
-            catch (FeatureNotSupportedException fnsEx)
-            {
-                // Handle not supported on device exception
-                Debug.WriteLine(fnsEx);
-            }
-            catch (PermissionException pEx)
-            {
-                // Handle permission exception
-                Debug.WriteLine(pEx);
-            }
-            catch (Exception ex)
-            {
-                // Unable to get location
-                Debug.WriteLine(ex);
-            }
+                Xamarin.Essentials.Location location = null;
+                try
+                {
+                    var geo_request = new GeolocationRequest(GeolocationAccuracy.Best);
+                    location = await Geolocation.GetLastKnownLocationAsync();
+                    location = await Geolocation.GetLocationAsync(geo_request);
+                }
+                catch (FeatureNotSupportedException fnsEx)
+                {
+                    // Handle not supported on device exception
+                    Debug.WriteLine(fnsEx);
+                }
+                catch (PermissionException pEx)
+                {
+                    // Handle permission exception
+                    Debug.WriteLine(pEx);
+                }
+                catch (Exception ex)
+                {
+                    // Unable to get location
+                    Debug.WriteLine(ex);
+                }
 
-            if (location != null)
-            {
-                MapPosition = new Position(location.Latitude, location.Longitude);
+                if (location != null)
+                {
+                    MapPosition = new Position(location.Latitude, location.Longitude);
+                }
+                init = true;
             }
         }
     }
